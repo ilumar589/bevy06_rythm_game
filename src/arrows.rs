@@ -1,9 +1,9 @@
 // create a resource that keeps the materials for the arrow sprites
 // this way we don't have to load them every time we want to create an arrow
 
-use bevy::prelude::{Assets, AssetServer, ColorMaterial, FromWorld, Handle, World, Component, Timer, Commands, Res, Time, ResMut, Transform, Vec3, SpriteBundle, Sprite, Query, With, Plugin, Vec2, Quat, Image, Vec4};
+use bevy::prelude::{Assets, AssetServer, ColorMaterial, FromWorld, Handle, World, Component, Timer, Commands, Res, Time, ResMut, Transform, Vec3, SpriteBundle, Sprite, Query, With, Plugin, Vec2, Quat, Image, Vec4, Entity, KeyCode, Input};
 use crate::{App, SongConfig};
-use crate::consts::{BASE_SPEED, SPAWN_POSITION, TARGET_POSITION};
+use crate::consts::{BASE_SPEED, SPAWN_POSITION, TARGET_POSITION, THREASHOLD};
 use crate::types::{Directions, Speed};
 
 
@@ -16,7 +16,8 @@ impl Plugin for ArrowsPlugin {
             .insert_resource(SpawnTimer(Timer::from_seconds(1.0, true)))
             .add_startup_system(setup_target_arrows)
             .add_system(spawn_arrows)
-            .add_system(move_arrows);
+            .add_system(move_arrows)
+            .add_system(despawn_arrows);
     }
 }
 
@@ -183,6 +184,27 @@ fn setup_target_arrows(mut commands: Commands,
                     }
                 }
             }
+        }
+    }
+}
+
+fn despawn_arrows(
+    mut commands: Commands,
+    query: Query<(Entity, &Transform, &Arrow)>,
+    keyboard_input: Res<Input<KeyCode>>
+) {
+    for (entity, transform, arrow) in query.iter() {
+        let position = transform.translation.x;
+
+        // Check if arrow is inside clicking threshold
+        if (TARGET_POSITION - THREASHOLD..= TARGET_POSITION + THREASHOLD).contains(&position) &&
+            arrow.direction.key_just_pressed(&keyboard_input) {
+            commands.entity(entity).despawn();
+        }
+
+        // Despawn arrows after they leave the screen
+        if position >=  2. * TARGET_POSITION {
+            commands.entity(entity).despawn();
         }
     }
 }
