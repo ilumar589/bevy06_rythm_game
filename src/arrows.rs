@@ -1,9 +1,9 @@
 // create a resource that keeps the materials for the arrow sprites
 // this way we don't have to load them every time we want to create an arrow
 
-use bevy::prelude::{Assets, AssetServer, ColorMaterial, FromWorld, Handle, World, Component, Timer, Commands, Res, Time, ResMut, Transform, Vec3, SpriteBundle, Sprite, Query, With, Plugin, Vec2, Quat, Image};
+use bevy::prelude::{Assets, AssetServer, ColorMaterial, FromWorld, Handle, World, Component, Timer, Commands, Res, Time, ResMut, Transform, Vec3, SpriteBundle, Sprite, Query, With, Plugin, Vec2, Quat, Image, Vec4};
 use crate::{App, SongConfig};
-use crate::consts::{BASE_SPEED, SPAWN_POSITION};
+use crate::consts::{BASE_SPEED, SPAWN_POSITION, TARGET_POSITION};
 use crate::types::{Directions, Speed};
 
 
@@ -14,6 +14,7 @@ impl Plugin for ArrowsPlugin {
         app
             .init_resource::<ArrowMaterialResource>()
             .insert_resource(SpawnTimer(Timer::from_seconds(1.0, true)))
+            .add_startup_system(setup_target_arrows)
             .add_system(spawn_arrows)
             .add_system(move_arrows);
     }
@@ -134,5 +135,54 @@ fn spawn_arrows(
 fn move_arrows(time: Res<Time>, mut query: Query<(&mut Transform, &Arrow)>) {
     for (mut transform, arrow) in query.iter_mut() {
         transform.translation.x += time.delta_seconds() * arrow.speed.value();
+    }
+}
+
+#[derive(Component)]
+struct TargetArrow;
+
+fn setup_target_arrows(mut commands: Commands,
+                       material_handles: Res<ArrowMaterialResource>,
+                       color_materials: Res<Assets<ColorMaterial>>) {
+
+    let directions = [Directions::Up, Directions::Down, Directions::Left, Directions::Right];
+
+    for direction in directions.iter() {
+        let mut transform =
+            Transform::from_translation(Vec3::new(TARGET_POSITION, direction.y(), 1.));
+        transform.rotate(Quat::from_rotation_z(direction.rotation()));
+
+        let border_material = color_materials.get(&material_handles.border_texture);
+
+        match border_material {
+            None => {
+                panic!("Border material not found");
+            }
+            Some(border_material_result) => {
+                let texture = border_material_result.texture.clone();
+
+                match texture {
+                    None => {
+                        panic!("No texture found for border material")
+                    }
+                    Some(texture_result) => {
+                        commands
+                            .spawn_bundle(SpriteBundle {
+                                sprite: Sprite {
+                                    color: border_material_result.color,
+                                    flip_x: false,
+                                    flip_y: false,
+                                    custom_size: Some(Vec2::new(140., 140.))
+                                },
+                                transform,
+                                global_transform: Default::default(),
+                                texture: texture_result,
+                                visibility: Default::default()
+                            })
+                            .insert(TargetArrow);
+                    }
+                }
+            }
+        }
     }
 }
