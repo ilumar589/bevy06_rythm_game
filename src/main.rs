@@ -3,12 +3,14 @@ extern crate core;
 mod arrows;
 mod consts;
 mod types;
+mod ui;
 
 use bevy::DefaultPlugins;
 use bevy::input::system::exit_on_esc_system;
-use bevy::prelude::{App, Commands, Msaa, OrthographicCameraBundle, Timer, WindowDescriptor};
+use bevy::prelude::{App, Commands, Msaa, OrthographicCameraBundle, Timer, UiCameraBundle, WindowDescriptor};
 use crate::arrows::{ ArrowsPlugin };
 use crate::types::SongConfig;
+use crate::ui::UIPlugin;
 
 fn main() {
     App::new()
@@ -24,10 +26,12 @@ fn main() {
         .add_system(exit_on_esc_system)
         .add_plugins(DefaultPlugins)
         .add_plugin(ArrowsPlugin)
+        .add_plugin(UIPlugin)
         .run();
 }
 
 
 fn setup(mut commands: Commands) {
     commands.spawn_bundle(OrthographicCameraBundle::new_2d());
+    commands.spawn_bundle(UiCameraBundle::default());
 }
