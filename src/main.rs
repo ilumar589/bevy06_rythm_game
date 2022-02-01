@@ -4,11 +4,13 @@ mod arrows;
 mod consts;
 mod types;
 mod ui;
+mod score;
 
 use bevy::DefaultPlugins;
 use bevy::input::system::exit_on_esc_system;
 use bevy::prelude::{App, Commands, Msaa, OrthographicCameraBundle, Timer, UiCameraBundle, WindowDescriptor};
 use crate::arrows::{ ArrowsPlugin };
+use crate::score::ScoreResource;
 use crate::types::SongConfig;
 use crate::ui::UIPlugin;
 
@@ -22,6 +24,7 @@ fn main() {
             ..Default::default()
         })
         .insert_resource(SongConfig::load_config())
+        .init_resource::<ScoreResource>()
         .add_startup_system(setup)
         .add_system(exit_on_esc_system)
         .add_plugins(DefaultPlugins)

@@ -2,7 +2,7 @@
 // this way we don't have to load them every time we want to create an arrow
 
 use bevy::prelude::{Assets, AssetServer, ColorMaterial, FromWorld, Handle, World, Component, Timer, Commands, Res, Time, ResMut, Transform, Vec3, SpriteBundle, Sprite, Query, With, Plugin, Vec2, Quat, Image, Vec4, Entity, KeyCode, Input};
-use crate::{App, SongConfig};
+use crate::{App, ScoreResource, SongConfig};
 use crate::consts::{BASE_SPEED, SPAWN_POSITION, TARGET_POSITION, THREASHOLD};
 use crate::types::{Directions, Speed};
 
@@ -191,7 +191,8 @@ fn setup_target_arrows(mut commands: Commands,
 fn despawn_arrows(
     mut commands: Commands,
     query: Query<(Entity, &Transform, &Arrow)>,
-    keyboard_input: Res<Input<KeyCode>>
+    keyboard_input: Res<Input<KeyCode>>,
+    mut score: ResMut<ScoreResource>
 ) {
     for (entity, transform, arrow) in query.iter() {
         let position = transform.translation.x;
@@ -199,12 +200,16 @@ fn despawn_arrows(
         // Check if arrow is inside clicking threshold
         if (TARGET_POSITION - THREASHOLD..= TARGET_POSITION + THREASHOLD).contains(&position) &&
             arrow.direction.key_just_pressed(&keyboard_input) {
+
             commands.entity(entity).despawn();
+            let _points = score.increase_correct(TARGET_POSITION - position);
         }
 
         // Despawn arrows after they leave the screen
         if position >=  2. * TARGET_POSITION {
             commands.entity(entity).despawn();
+
+            score.increase_fails();
         }
     }
 }
