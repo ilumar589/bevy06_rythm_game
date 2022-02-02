@@ -9,7 +9,7 @@ impl Plugin for AudioPlugin {
     }
 }
 
-fn start_song(audio: Res<Audio>, time: Res<Time>, mut config: ResMut<SongConfig>) {
+fn start_song(time: Res<Time>, mut config: ResMut<SongConfig>) {
     let secs = time.seconds_since_startup();
     let secs_last = secs - time.delta_seconds_f64();
 
