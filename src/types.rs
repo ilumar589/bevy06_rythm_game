@@ -1,8 +1,15 @@
+use serde_derive::{Serialize, Deserialize};
 use std::f32::consts::PI;
-use bevy::prelude::{Input, KeyCode};
+use std::fs::File;
+use std::io::Read;
+use bevy::asset::Handle;
+use bevy::prelude::{AssetServer, AudioSource, Input, KeyCode};
+use kira::manager::{AudioManager, AudioManagerSettings};
+use kira::sound::static_sound::{StaticSoundData, StaticSoundSettings};
+use kira_cpal::CpalBackend;
 use crate::consts::{BASE_SPEED, DISTANCE};
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub enum Directions {
     Up,
     Down,
@@ -44,7 +51,7 @@ impl Directions {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
 pub enum Speed {
     Slow,
     Medium,
@@ -75,31 +82,73 @@ pub struct ArrowTime {
 }
 
 impl ArrowTime {
-    fn new(click_time: f64, speed: Speed, direction: Directions) -> Self {
-        let speed_value = speed.value();
+    fn new(arrow_toml: &ArrowTimeToml) -> Self {
+        let speed_value = arrow_toml.speed.value();
         Self {
-            spawn_time: click_time - (DISTANCE / speed_value) as f64,
-            speed,
-            direction
+            spawn_time: arrow_toml.click_time - (DISTANCE / speed_value) as f64,
+            speed: arrow_toml.speed,
+            direction: arrow_toml.direction
         }
     }
 }
 
-#[derive(Debug)]
+#[derive(Deserialize, Serialize, Debug)]
+pub struct ArrowTimeToml {
+    pub click_time: f64,
+    pub speed: Speed,
+    pub direction: Directions
+}
+
 pub struct SongConfig {
+    pub name: String,
+    pub manager: AudioManager<CpalBackend>,
+    pub song_audio: StaticSoundData,
     pub arrows: Vec<ArrowTime>
 }
 
+#[derive(Deserialize, Debug)]
+struct SongConfigToml {
+    pub name: String,
+    pub filename: String,
+    pub arrows: Vec<ArrowTimeToml>
+}
+
 impl SongConfig {
-    pub fn load_config() -> Self {
+    pub fn load_config(path: &str) -> Self {
+        // Open files and read contents
+        let mut file = File::open(format!("assets/songs/{}", path)).expect("Couldn't open file");
+        let mut contents = String::new();
+        file.read_to_string(&mut contents).expect("Couldn't read file into String");
+
+        // Parse using toml and serde
+        let parsed: SongConfigToml = toml::from_str(&contents).expect("Couldn't parse into SongConfigToml");
+
+        // Process arrows
+        let mut arrows = parsed
+            .arrows
+            .iter()
+            .map(|arrow| ArrowTime::new(arrow))
+            .collect::<Vec<ArrowTime>>();
+
+        // sort arrow by spawn time
+        arrows.sort_by(|a, b| a.spawn_time.partial_cmp(&b.spawn_time).unwrap());
+
+        // load song audio and get the handle
+        let manager = AudioManager::new(
+            CpalBackend::new().unwrap(),
+            AudioManagerSettings::default()
+        ).unwrap();
+
+        let sound_data = kira_loaders::load(
+            format!("assets/songs/{}", parsed.filename),
+            StaticSoundSettings::default()
+        ).unwrap();
+
         SongConfig {
-            arrows: vec![
-                ArrowTime::new(1., Speed::Slow, Directions::Up),
-                ArrowTime::new(2., Speed::Slow, Directions::Down),
-                ArrowTime::new(3., Speed::Slow, Directions::Left),
-                ArrowTime::new(4., Speed::Medium, Directions::Up),
-                ArrowTime::new(5., Speed::Fast, Directions::Right),
-            ]
+            name: parsed.name,
+            manager,
+            song_audio: sound_data,
+            arrows
         }
     }
 }
