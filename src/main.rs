@@ -11,6 +11,7 @@ use bevy::asset::AssetServer;
 use bevy::DefaultPlugins;
 use bevy::input::system::exit_on_esc_system;
 use bevy::prelude::{App, Commands, Msaa, OrthographicCameraBundle, Res, Timer, UiCameraBundle, WindowDescriptor};
+use bevy::render::options::{Backends, WgpuOptions};
 use kira::manager::{AudioManager, AudioManagerSettings};
 use kira::manager::error::PlaySoundError;
 use kira::sound::static_sound::{StaticSoundHandle, StaticSoundSettings};
@@ -22,7 +23,24 @@ use crate::types::SongConfig;
 use crate::ui::UIPlugin;
 
 fn main() {
+
+    let platform_api =
+        if cfg!(target_os = "windows") {
+            Backends::DX12
+        } else if cfg!(target_os = "macos") {
+            Backends::METAL
+        } else if cfg!(target_os = "linux") {
+            Backends::VULKAN
+        } else {
+            panic!("Unsupported platform!")
+        };
+
+
     App::new()
+        .insert_resource(WgpuOptions {
+            backends: Some(platform_api),
+            ..Default::default()
+        })
         .insert_resource( Msaa { samples: 4 })
         .insert_resource(WindowDescriptor {
             width: 800.0,
